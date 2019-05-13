@@ -1,0 +1,5 @@
+{
+  "private": {
+    "internalServiceEndpoint": "http://10.1.1.125:8080/app2"
+  }
+}

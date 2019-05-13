@@ -1,0 +1,74 @@
+{
+  "name": "fotopop-bot",
+  "version": "0.0.1",
+  "author": "汤力丞 <lctang@foxmail.com>",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "cross-env MONGO_URL=mongodb://localhost:3001/meteor MONGO_OPLOG_URL=mongodb://localhost:3001/local meteor run --port 4000 --settings settings.json",
+    "lint": "eslint .",
+    "pretest": "meteor npm run lint --silent",
+    "test": "meteor test --once --driver-package meteortesting:mocha --port 4100",
+    "test-app": "cross-env TEST_WATCH=1 MONGO_URL=mongodb://localhost:3001/meteor MONGO_OPLOG_URL=mongodb://localhost:3001/local meteor test --full-app --driver-package meteortesting:mocha --port 4100 --settings settings.json",
+    "visualize": "meteor --production --extra-packages bundle-visualizer"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.3.4",
+    "axios": "^0.18.0",
+    "js-cache": "^1.0.3",
+    "lodash": "^4.17.11",
+    "meteor-node-stubs": "^0.4.1",
+    "moment": "^2.24.0",
+    "simpl-schema": "^1.5.5",
+    "uuid": "^3.3.2"
+  },
+  "meteor": {
+    "mainModule": {
+      "client": "client/main.js",
+      "server": "server/main.js"
+    },
+    "testModule": "tests/main.js"
+  },
+  "devDependencies": {
+    "@meteorjs/eslint-config-meteor": "^1.0.5",
+    "babel-eslint": "^10.0.1",
+    "cross-env": "^5.2.0",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-import-resolver-meteor": "^0.4.0",
+    "eslint-plugin-import": "^2.17.2",
+    "eslint-plugin-jsx-a11y": "^6.2.1",
+    "eslint-plugin-meteor": "^5.1.0",
+    "eslint-plugin-react": "^7.13.0"
+  },
+  "eslintConfig": {
+    "extends": "@meteorjs/eslint-config-meteor",
+    "rules": {
+      "no-unused-expressions": [
+        "error",
+        {
+          "allowShortCircuit": true,
+          "allowTernary": true
+        }
+      ],
+      "no-restricted-syntax": [
+        "error",
+        "ForInStatement",
+        "LabeledStatement",
+        "WithStatement"
+      ],
+      "no-plusplus": [
+        "error",
+        {
+          "allowForLoopAfterthoughts": true
+        }
+      ],
+      "no-param-reassign": [
+        "error",
+        {
+          "props": false
+        }
+      ]
+    }
+  }
+}
