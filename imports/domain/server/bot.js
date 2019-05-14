@@ -236,14 +236,14 @@ const bot = {
       thinkTime: constant('3s'),
       choices: {
         startGame: {
-          weight: constant(80),
+          weight: constant(90),
           action({ key: botId }) {
             // call start game
             GameMethods.startGame.call({ botId });
           },
         },
         noop: {
-          weight: constant(19),
+          weight: constant(9),
         },
         leave: {
           weight: constant(1),
