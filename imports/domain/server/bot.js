@@ -118,13 +118,13 @@ const bot = {
       thinkTime: constant('2h'),
       choices: {
         backOnline: {
-          weight: constant(50), // default: 0
+          weight: constant(70), // default: 0
           action() { // optional
             return 'online';
           },
         },
         noop: {
-          weight: constant(50),
+          weight: constant(30),
         },
       },
     },
