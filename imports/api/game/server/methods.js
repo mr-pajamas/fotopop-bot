@@ -101,7 +101,7 @@ export const leaveRoom = new ValidatedMethod({
           },
         },
       },
-      currentRoom.lastWinner === botId && { $unset: { lastWinner: '' } },
+      (currentRoom.lastWinner === botId) && { $unset: { lastWinner: '' } },
     ));
 
     Meteor.defer(() => {
