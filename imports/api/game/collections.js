@@ -87,6 +87,8 @@ Rooms.attachSchema(new SimpleSchema({
   'users.$.botLevel': {
     type: SimpleSchema.Integer,
     optional: true,
+    index: true,
+    sparse: true,
   },
   'users.$.supporters': {
     type: Array,
