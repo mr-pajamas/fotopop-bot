@@ -20,7 +20,8 @@ const bot = {
         simulation[dirtyKeys] = [];
       }
     }), 300, { leading: false, trailing: true });
-    Rooms.find({ users: { $elemMatch: { botLevel: { $exists: true, $ne: null } } } }).observe({
+    Rooms.find({ users: { $elemMatch: { botLevel: { $exists: true, $ne: null } } } },
+      { fields: { messages: 0 } }).observe({
     // Rooms.find({}).observe({
       // 房间中开始有了机器人
       // 队列中开始有了机器人
