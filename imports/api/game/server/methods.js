@@ -37,15 +37,15 @@ export const joinRoom = new ValidatedMethod({
       $pull: { users: { id: botId } },
     });
 
-    // const type = Random.choice([0, 1]);
-    const type = 0;
+    const type = Random.choice([0, 1]);
+    // const type = 0; // TODO
     let categories = cache.get(type);
     if (!categories) {
       categories = await getCategories(type);
       cache.set(type, categories, 600000);
     }
-    // const categoryId = Random.choice(categories).id;
-    const categoryId = categories[0].id;
+    const categoryId = Random.choice(categories).id;
+    // const categoryId = categories[0].id; // TODO
 
     findAndJoin(botId, 1, type, categoryId);
   },

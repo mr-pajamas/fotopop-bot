@@ -91,8 +91,8 @@ const bot = {
 
     const room = Rooms.findOne({ 'users.id': botId });
     if (!room) {
-      // return Random.choice(['online', 'offline']);
-      return 'online'; // TODO
+      return Random.choice(['online', 'offline']);
+      // return 'online'; // TODO
     }
     if (room.queue()) {
       return 'matching';
@@ -134,8 +134,8 @@ const bot = {
       thinkTime: constant('2m'),
       choices: {
         rest: {
-          // weight: constant(10),
-          weight: constant(0), // TODO
+          weight: constant(10),
+          // weight: constant(0), // TODO
           action() {
             return 'offline';
           },
