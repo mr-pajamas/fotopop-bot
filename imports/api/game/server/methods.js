@@ -42,6 +42,7 @@ export const joinRoom = new ValidatedMethod({
     let categories = cache.get(type);
     if (!categories) {
       categories = await getCategories(type);
+      if (!categories.length) throw new Meteor.Error(500, `获取分类信息失败（type=${type}）`);
       cache.set(type, categories, 600000);
     }
     const categoryId = Random.choice(categories).id;

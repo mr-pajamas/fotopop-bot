@@ -54,7 +54,7 @@ function loop(callback, interval) {
 }
 
 function checkIn() {
-  console.log('Checking in..................................');
+  // console.log('Checking in..................................');
   if (!simulation) simulation = new Simulation(bot);
 
   if (!operatorId) {

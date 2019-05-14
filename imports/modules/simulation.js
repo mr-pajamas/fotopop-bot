@@ -54,7 +54,7 @@ class State {
         action,
       }),
     );
-    console.log(`====== State ${key} has been created ======`);
+    // console.log(`====== State ${key} has been created ======`);
     if (this._choices.length) {
       const expectedTimeout = ((thinkTime && typeof thinkTime === 'function')
         && parseDuration(thinkTime.call(this, this._scenario)))
@@ -62,30 +62,30 @@ class State {
 
       const timeout = cal(expectedTimeout, getRandom(0.1, 0.9));
 
-      console.log(`Expected think time is: ${expectedTimeout}`);
-      console.log(`Actual Think time is: ${timeout}`);
-      console.log('Choices are: ');
-      console.log(this._choices);
+      // console.log(`Expected think time is: ${expectedTimeout}`);
+      // console.log(`Actual Think time is: ${timeout}`);
+      // console.log('Choices are: ');
+      // console.log(this._choices);
 
       this._tid = Meteor.setTimeout(this._makeChoice.bind(this), timeout);
     } else {
-      console.log('This is a dead end');
+      // console.log('This is a dead end');
     }
   }
 
   _makeChoice() {
-    console.log('Making choice...');
+    // console.log('Making choice...');
     const totalWeight = reduce(this._choices, (sum, { weight }) => sum + weight, 0);
-    console.log(`totalWeight is: ${totalWeight}`);
+    // console.log(`totalWeight is: ${totalWeight}`);
     const random = getRandom(0, totalWeight);
-    console.log(`random is: ${random}`);
+    // console.log(`random is: ${random}`);
 
     let weightAccumulated = 0;
     for (const choice of this._choices) {
       weightAccumulated += choice.weight;
       if (random < weightAccumulated) {
         // choice taken
-        console.log(`Made choice: ${choice.name}`);
+        // console.log(`Made choice: ${choice.name}`);
         if (choice.action && typeof choice.action === 'function') {
           try {
             const stateKey = choice.action.call(this, this._scenario);
@@ -96,7 +96,7 @@ class State {
             }
           } catch (e) {
             console.log(e);
-            console.log('Restoring state...');
+            // console.log('Restoring state...');
             this._scenario.restore();
           }
         } else {
