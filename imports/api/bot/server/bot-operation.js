@@ -46,7 +46,12 @@ function reschedule(callback, delay) {
 }
 
 function loop(callback, interval) {
-  callback();
+  try {
+    callback();
+  } catch (e) {
+    console.log(e);
+  }
+  // callback();
   reschedule(() => {
     // callback();
     loop(callback, interval);
@@ -54,19 +59,23 @@ function loop(callback, interval) {
 }
 
 function checkIn() {
-  // console.log('Checking in..................................');
+  console.log('Checking in..................................');
   if (!simulation) simulation = new Simulation(bot);
 
   if (!operatorId) {
     operatorId = BotOperators.insert({ checkInStatus: Random.id() });
+    console.log(`New operatorId = '${operatorId}'`);
   } else {
+    console.log('Refreshing checkInStatus...');
     const affected = BotOperators.update(operatorId, { $set: { checkInStatus: Random.id() } });
+    !!affected && console.log('Refresh complete');
 
     if (!affected) {
       operatorId = BotOperators.insert({ checkInStatus: Random.id() });
     }
   }
 
+  console.log('Observing other operators...');
 
   const newOtherOperators = new Map();
 
@@ -95,6 +104,8 @@ function checkIn() {
 
   otherOperators = newOtherOperators;
 
+  console.log('Other operators are: ');
+  console.log(otherOperators);
 
   const operators = [operatorId, ...otherOperators.keys()].sort();
   const operatorIndex = operators.indexOf(operatorId);

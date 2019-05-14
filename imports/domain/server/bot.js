@@ -91,7 +91,7 @@ const bot = {
 
     const room = Rooms.findOne({ 'users.id': botId });
     if (!room) {
-      return Random.choice(['online', 'offline']);
+      return Random.fraction() < 0.3 ? 'online' : 'offline';
       // return 'online'; // TODO
     }
     if (room.queue()) {
@@ -115,16 +115,16 @@ const bot = {
   states: {
     offline: {
       name: '离线',
-      thinkTime: constant('2h'),
+      thinkTime: constant('30m'),
       choices: {
         backOnline: {
-          weight: constant(70), // default: 0
+          weight: constant(95), // default: 0
           action() { // optional
             return 'online';
           },
         },
         noop: {
-          weight: constant(30),
+          weight: constant(5),
         },
       },
     },
@@ -134,21 +134,21 @@ const bot = {
       thinkTime: constant('2m'),
       choices: {
         rest: {
-          weight: constant(10),
+          weight: constant(5),
           // weight: constant(0), // TODO
           action() {
             return 'offline';
           },
         },
         join: {
-          weight: constant(70),
+          weight: constant(80),
           action({ key: botId }) {
             // call join method
             GameMethods.joinRoom.call({ botId });
           },
         },
         noop: {
-          weight: constant(20),
+          weight: constant(15),
         },
       },
     },
@@ -158,7 +158,7 @@ const bot = {
       // no think time
       // no choices
       name: '寻找房间中',
-      thinkTime: constant('1m'),
+      thinkTime: constant('3m'),
       choices: {
         abort: {
           weight: constant(80),
