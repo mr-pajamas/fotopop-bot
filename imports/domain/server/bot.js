@@ -2,24 +2,30 @@ import { Meteor } from 'meteor/meteor';
 import { Random } from 'meteor/random';
 import constant from 'lodash/constant';
 import map from 'lodash/map';
-import xorBy from 'lodash/xorBy';
-import throttle from 'lodash/throttle';
+// import xorBy from 'lodash/xorBy';
+import differenceBy from 'lodash/differenceBy';
+// import throttle from 'lodash/throttle';
+import debounce from 'lodash/debounce';
+import forEach from 'lodash/forEach';
 import { Rooms } from '../../api/game/collections.js';
 
 import * as GameMethods from '../../api/game/server/methods.js';
 
-// THROTTLE UPDATES
+const debouncedRestore = Symbol('debouncedRestore');
+
 const bot = {
   name: 'bot',
   init(simulation) { // simulation level
-    const dirtyKeys = Symbol('dirtyKeys');
-    simulation[dirtyKeys] = [];
+    // const dirtyKeys = Symbol('dirtyKeys');
+    // simulation[dirtyKeys] = [];
+    /*
     const throttledUpdate = throttle(Meteor.bindEnvironment(() => {
       if (simulation[dirtyKeys].length) {
         simulation.update(Array.from(new Set(simulation[dirtyKeys])));
         simulation[dirtyKeys] = [];
       }
     }), 300, { leading: false, trailing: true });
+    */
     Rooms.find({ users: { $elemMatch: { botLevel: { $exists: true, $ne: null } } } },
       { fields: { messages: 0 } }).observe({
     // Rooms.find({}).observe({
@@ -28,9 +34,17 @@ const bot = {
       added(room) {
         // 找到相关机器人
         // 更新这些机器人状态
-        simulation[dirtyKeys].push(...room.botIds());
-        throttledUpdate();
+        // simulation[dirtyKeys].push(...room.botIds());
+        // throttledUpdate();
         // simulation.update(room.botIds());
+
+        forEach(room.botIds(), (id) => {
+          const scenario = simulation.get(id);
+          if (scenario) {
+            scenario.data.room = room;
+            scenario[debouncedRestore]();
+          }
+        });
       },
       // 机器人所在的房间/队列发生变动：
       // 【】所在队列中，真人加入/离开队列（不关心）
@@ -48,6 +62,47 @@ const bot = {
       changed(newRoom, oldRoom) {
         // const botIds = [];
 
+        const outBots = differenceBy(oldRoom.bots(), newRoom.bots(), 'id');
+        forEach(outBots, ({ id }) => {
+          const scenario = simulation.get(id);
+          if (scenario) {
+            scenario.data.room = undefined;
+            scenario[debouncedRestore]();
+          }
+        });
+
+        const botIds = [];
+
+        const inBots = differenceBy(newRoom.bots(), oldRoom.bots(), 'id');
+        botIds.push(...map(inBots, 'id'));
+
+        if (!newRoom.queue()) {
+          if (newRoom.inGame() !== oldRoom.inGame()) { // 房间开始/结束游戏
+            botIds.push(...newRoom.botIds());
+          } else if (!newRoom.inGame()) {
+            const newRoomHost = newRoom.host();
+            if (newRoomHost.botLevel) {
+              if (newRoomHost.id !== oldRoom.host().id) { // 机器人成为房主
+                botIds.push(newRoomHost.id);
+              } else if (newRoom.canStartGame() !== oldRoom.canStartGame()) {
+                botIds.push(newRoomHost.id);
+              } else if (newRoom.canStartGame()
+                && (newRoom.users.length >= 4) !== (oldRoom.users.length >= 4)) {
+                botIds.push(newRoomHost.id);
+              }
+            }
+          }
+        }
+
+        forEach(Array.from(new Set(botIds)), (id) => {
+          const scenario = simulation.get(id);
+          if (scenario) {
+            scenario.data.room = newRoom;
+            scenario[debouncedRestore]();
+          }
+        });
+
+        /*
         const inOutBots = xorBy(newRoom.bots(), oldRoom.bots(), 'id');
         simulation[dirtyKeys].push(...map(inOutBots, 'id'));
 
@@ -70,15 +125,23 @@ const bot = {
         }
 
         throttledUpdate();
+        */
         // simulation.update(Array.from(new Set(botIds)));
       },
       // 房间被删除
       // 房间中没有了机器人
       // 队列中没有了机器人
       removed(room) {
-        simulation[dirtyKeys].push(...room.botIds());
-        throttledUpdate();
+        // simulation[dirtyKeys].push(...room.botIds());
+        // throttledUpdate();
         // simulation.update(room.botIds());
+        forEach(room.botIds(), (id) => {
+          const scenario = simulation.get(id);
+          if (scenario) {
+            scenario.data.room = undefined;
+            scenario[debouncedRestore]();
+          }
+        });
       },
     });
   },
@@ -88,9 +151,15 @@ const bot = {
     // 不在房间中，不在队列里：online，有概率offline
     // 在队列里：matching
     // const { botId } = this.data;
+    if (!this[debouncedRestore]) {
+      this[debouncedRestore] = debounce(Meteor.bindEnvironment(this.restore.bind(this)), 300);
+    }
+
     const botId = this.key;
 
-    const room = Rooms.findOne({ 'users.id': botId });
+    const { room } = this.data;
+
+    // const room = Rooms.findOne({ 'users.id': botId });
     if (!room) {
       return Random.fraction() < 0.3 ? 'online' : 'offline';
       // return 'online'; // TODO
@@ -143,9 +212,15 @@ const bot = {
         },
         join: {
           weight: constant(80),
-          action({ key: botId }) {
+          action(scenario) {
             // call join method
-            GameMethods.joinRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.joinRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -163,9 +238,15 @@ const bot = {
       choices: {
         abort: {
           weight: constant(80),
-          action({ key: botId }) {
+          action(scenario) {
             // call abort method
-            GameMethods.abortFindingRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.abortFindingRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -180,9 +261,15 @@ const bot = {
       choices: {
         leave: {
           weight: constant(10),
-          action({ key: botId }) {
+          action(scenario) {
             // call leave method
-            GameMethods.leaveRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.leaveRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -197,9 +284,15 @@ const bot = {
       choices: {
         leave: {
           weight: constant(5),
-          action({ key: botId }) {
+          action(scenario) {
             // call leave method
-            GameMethods.leaveRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.leaveRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -214,9 +307,15 @@ const bot = {
       choices: {
         startGame: {
           weight: constant(29),
-          action({ key: botId }) {
+          action(scenario) {
             // call start game
-            GameMethods.startGame.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.startGame.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -224,9 +323,15 @@ const bot = {
         },
         leave: {
           weight: constant(2),
-          action({ key: botId }) {
+          action(scenario) {
             // call leave method
-            GameMethods.leaveRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.leaveRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
       },
@@ -238,9 +343,15 @@ const bot = {
       choices: {
         startGame: {
           weight: constant(90),
-          action({ key: botId }) {
+          action(scenario) {
             // call start game
-            GameMethods.startGame.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.startGame.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
         noop: {
@@ -248,9 +359,15 @@ const bot = {
         },
         leave: {
           weight: constant(1),
-          action({ key: botId }) {
+          action(scenario) {
             // call leave method
-            GameMethods.leaveRoom.call({ botId });
+            const { key: botId } = scenario;
+            try {
+              GameMethods.leaveRoom.call({ botId });
+            } catch (e) {
+              scenario.data.room = Rooms.findOne({ 'users.id': botId });
+              throw e;
+            }
           },
         },
       },

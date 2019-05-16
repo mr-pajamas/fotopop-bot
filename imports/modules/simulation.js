@@ -194,4 +194,8 @@ export default class Simulation {
       scenario && Meteor.defer(scenario.restore.bind(scenario));
     });
   }
+
+  get(key) {
+    return this._scenarios.get(key);
+  }
 }
