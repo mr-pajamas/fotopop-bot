@@ -67,6 +67,7 @@ function fillRoom(roomId) {
       _id: roomId,
       rounds: null,
       users: { $not: { $size: 6 } },
+      pvt: false,
     });
     if (!room) break;
 
