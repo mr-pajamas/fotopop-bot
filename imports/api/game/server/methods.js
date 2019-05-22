@@ -147,6 +147,7 @@ export const startGame = new ValidatedMethod({
         // 'users.$[].score': 0,
         // roundCount: 1,
         'users.$[u].ready': false,
+        fastMatching: false,
       },
       $unset: { 'users.$[].supporters': '' },
     }, {
