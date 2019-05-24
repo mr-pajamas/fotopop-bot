@@ -182,7 +182,14 @@ export const leaveRoom = new ValidatedMethod({
 
     Meteor.defer(() => {
       decideHostImpeachment(currentRoom._id);
-      fillRoom(currentRoom._id);
+      const removed = Rooms.remove({
+        _id: currentRoom._id,
+        // 没有一个活人
+        users: { $not: { $elemMatch: { botLevel: null, offline: false } } },
+      });
+      if (!removed) {
+        fillRoom(currentRoom._id);
+      }
     });
   },
 });
