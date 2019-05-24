@@ -13,7 +13,7 @@ import { Rooms } from '../collections.js';
 import { UserAccounts } from '../../account/collections.js';
 import { getCategories } from './service-methods.js';
 
-import { fillRoom, findAndJoin } from './game-operation.js';
+import { fillRoom, findAndJoin, decideHostImpeachment } from './game-operation.js';
 
 const cache = new Cache();
 
@@ -86,6 +86,81 @@ export const leaveRoom = new ValidatedMethod({
 
     const bot = UserAccounts.findOne(botId);
 
+    // 先不是房主试试，再试试是房主的
+    const affected = Rooms.update({
+      _id: currentRoom._id,
+      'users.id': botId,
+      rounds: null,
+      $nor: [{ lastWinner: botId }, { lastWinner: null, 'users.0.id': botId }],
+    }, {
+      $pull: { users: { id: botId } },
+      $inc: { userCount: -1, botLeavingCount: 1 },
+      $push: {
+        messages: {
+          type: 1,
+          text: `${bot.name || '足记用户'}离开了房间`,
+        },
+      },
+    });
+
+    if (!affected) {
+      Rooms.update({
+        _id: currentRoom._id,
+        'users.id': botId,
+        rounds: null,
+        $or: [{ lastWinner: botId }, { lastWinner: null, 'users.0.id': botId }],
+      }, {
+        $pull: { users: { id: botId } },
+        $inc: { userCount: -1 },
+        $set: { botLeavingCount: 0 },
+        $push: {
+          messages: {
+            type: 1,
+            text: `${bot.name || '足记用户'}离开了房间`,
+          },
+        },
+        $unset: { lastWinner: '' },
+      });
+    }
+
+    /*
+    if (currentRoom.host().id === botId) {
+      Rooms.update({
+        _id: currentRoom._id,
+        'users.id': botId,
+        rounds: null,
+      }, Object.assign(
+        {
+          $pull: { users: { id: botId } },
+          $inc: { userCount: -1 },
+          $set: { botLeavingCount: 0 },
+          $push: {
+            messages: {
+              type: 1,
+              text: `${bot.name || '足记用户'}离开了房间`,
+            },
+          },
+        },
+        (currentRoom.lastWinner === botId) && { $unset: { lastWinner: '' } },
+      ));
+    } else {
+      Rooms.update({
+        _id: currentRoom._id,
+        'users.id': botId,
+        rounds: null,
+      }, {
+        $pull: { users: { id: botId } },
+        $inc: { userCount: -1, botLeavingCount: 1 },
+        $push: {
+          messages: {
+            type: 1,
+            text: `${bot.name || '足记用户'}离开了房间`,
+          },
+        },
+      });
+    }
+    */
+    /*
     Rooms.update({
       _id: currentRoom._id,
       'users.id': botId,
@@ -103,8 +178,10 @@ export const leaveRoom = new ValidatedMethod({
       },
       (currentRoom.lastWinner === botId) && { $unset: { lastWinner: '' } },
     ));
+    */
 
     Meteor.defer(() => {
+      decideHostImpeachment(currentRoom._id);
       fillRoom(currentRoom._id);
     });
   },
@@ -148,6 +225,7 @@ export const startGame = new ValidatedMethod({
         // roundCount: 1,
         'users.$[u].ready': false,
         fastMatching: false,
+        botLeavingCount: 0,
       },
       $unset: { 'users.$[].supporters': '' },
     }, {
