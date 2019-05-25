@@ -3,10 +3,12 @@ import { Random } from 'meteor/random';
 import moment from 'moment/moment';
 import filter from 'lodash/filter';
 import forEach from 'lodash/forEach';
+import map from 'lodash/map';
 
 import '../../../modules/string-hashcode.js';
 import { BotOperators } from '../collections.js';
 import { UserAccounts } from '../../account/collections.js';
+import { Rooms } from '../../game/collections.js';
 
 import Simulation from '../../../modules/simulation.js';
 import bot from '../../../domain/server/bot.js';
@@ -122,9 +124,10 @@ function checkIn() {
     id => ((id.hashCode() >>> 0) % operators.length) === operatorIndex);
 
   if (oldNonOperableBotIds.length) {
-  // abandon
+    // abandon
     forEach(oldNonOperableBotIds, id => simulation.eject(id));
 
+    // TODO: CHUNK THIS
     UserAccounts.update({
       _id: { $in: oldNonOperableBotIds },
     }, {
@@ -145,10 +148,31 @@ function checkIn() {
     });
 
     // pickup
+    /*
     UserAccounts.find({
       _id: { $in: newOperableBotIds },
       operator: operatorId,
     }).forEach(({ _id }) => simulation.inject(_id));
+    */
+
+    const newOperatingBotIds = UserAccounts.find({
+      _id: { $in: newOperableBotIds },
+      operator: operatorId,
+    }).map(({ _id }) => _id);
+
+    const botRoomMap = new Map(map(newOperatingBotIds, id => [id, undefined]));
+
+    Rooms.find({ 'users.id': { $in: newOperatingBotIds } }).forEach((room) => {
+      forEach(room.botIds(), (id) => {
+        if (botRoomMap.has(id)) {
+          botRoomMap.set(id, room);
+        }
+      });
+    });
+
+    botRoomMap.forEach((room, botId) => {
+      simulation.inject(botId, { room });
+    });
   }
 }
 

@@ -233,6 +233,10 @@ Rooms.attachSchema(new SimpleSchema({
       */
     }),
   },
+  botLeavingCount: {
+    type: SimpleSchema.Integer,
+    defaultValue: 0,
+  },
 }));
 
 const isActiveUser = user => !user.offline;

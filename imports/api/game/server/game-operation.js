@@ -126,6 +126,32 @@ function fillRoom(roomId) {
   }
 }
 
+function decideHostImpeachment(roomId) {
+  const room = Rooms.findOne(roomId);
+  if (room && !room.inGame() && room.botLeavingCount >= 8) {
+    const user = UserAccounts.findOne(room.host().id);
+
+    Rooms.update({
+      _id: roomId,
+      rounds: null,
+      botLeavingCount: { $gte: 8 },
+      'users.id': user._id,
+      $or: [{ lastWinner: user._id }, { lastWinner: null, 'users.0.id': user._id }],
+    }, {
+      $pull: { users: { id: user._id } },
+      $inc: { userCount: -1 },
+      $set: { botLeavingCount: 0 },
+      $push: {
+        messages: {
+          type: 1,
+          text: `${user.name || '足记用户'}离开了房间`,
+        },
+      },
+      $unset: { lastWinner: '' },
+    });
+  }
+}
+
 // 用户掉线时
 // 影响游戏终局检查[done]
 // 影响机器人答题[done]
@@ -147,4 +173,5 @@ function fillRoom(roomId) {
 export {
   fillRoom,
   findAndJoin,
+  decideHostImpeachment,
 };
